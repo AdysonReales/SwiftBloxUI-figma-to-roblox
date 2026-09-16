@@ -1,0 +1,11 @@
+{
+  "name": "SwiftBlox UI",
+  "id": "1234567890",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/index.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["http://localhost:3000", "https://apis.roblox.com"]
+  }
+}

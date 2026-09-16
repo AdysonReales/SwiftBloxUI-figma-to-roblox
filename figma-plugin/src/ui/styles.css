@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Figma UI overrides */
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+button {
+  outline: none;
+}

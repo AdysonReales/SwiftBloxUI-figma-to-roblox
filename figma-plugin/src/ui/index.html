@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwiftBlox UI</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bg-figma-bg text-figma-text p-4 font-sans select-none">
+  <div class="flex flex-col h-full">
+    <div class="mb-6">
+      <h1 class="text-xl font-bold text-figma-blue">⚡ SwiftBlox UI</h1>
+      <p class="text-sm text-figma-textMuted mt-1">Select a root frame and choose an export bridge to Roblox Studio.</p>
+    </div>
+
+    <div class="flex-1 space-y-3">
+      <button id="btn-clipboard" class="w-full bg-figma-panel border border-figma-border hover:border-figma-text transition-colors p-3 rounded-md flex flex-col items-start text-left group">
+        <span class="font-semibold group-hover:text-figma-blue transition-colors">Option A: Clipboard</span>
+        <span class="text-xs text-figma-textMuted mt-1">Copies JSON payload. Paste inside Studio.</span>
+      </button>
+
+      <button id="btn-localhost" class="w-full bg-figma-panel border border-figma-border hover:border-figma-text transition-colors p-3 rounded-md flex flex-col items-start text-left group">
+        <span class="font-semibold group-hover:text-figma-blue transition-colors">Option B: Local Bridge</span>
+        <span class="text-xs text-figma-textMuted mt-1">Sends directly to http://localhost:3000</span>
+      </button>
+
+      <button id="btn-cloud" class="w-full bg-figma-panel border border-figma-border hover:border-figma-text transition-colors p-3 rounded-md flex flex-col items-start text-left group opacity-50 cursor-not-allowed">
+        <span class="font-semibold">Option C: Open Cloud</span>
+        <span class="text-xs text-figma-textMuted mt-1">Requires API Key configuration. (Coming Soon)</span>
+      </button>
+    </div>
+
+    <div id="status-container" class="mt-4 p-3 rounded-md bg-figma-panel border border-figma-border hidden">
+      <p id="status-text" class="text-sm text-center font-medium"></p>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
