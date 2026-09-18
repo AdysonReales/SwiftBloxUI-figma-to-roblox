@@ -6,6 +6,8 @@
   "ui": "dist/index.html",
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["http://localhost:3000", "https://apis.roblox.com"]
+    "allowedDomains": ["https://apis.roblox.com"],
+    "devAllowedDomains": ["http://localhost:3000"],
+    "reasoning": "Syncs exported UI JSON payloads to the local bridge server and uploads decal assets to Roblox Open Cloud."
   }
 }

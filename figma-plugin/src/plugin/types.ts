@@ -5,11 +5,16 @@ export interface UDim2 {
   OffsetY: number;
 }
 
+export interface Vector2Data {
+  X: number;
+  Y: number;
+}
+
 export interface Color3 {
   R: number;
   G: number;
   B: number;
-  A: number; // Stored here for BackgroundTransparency mapping
+  A: number;
 }
 
 export interface SwiftBloxNode {
@@ -17,6 +22,8 @@ export interface SwiftBloxNode {
   ClassName: string;
   Size: UDim2;
   Position: UDim2;
+  AnchorPoint?: Vector2Data;
+  AspectRatio?: number;
   BackgroundColor3?: Color3;
   BackgroundTransparency?: number;
   CornerRadius?: number;
@@ -25,9 +32,10 @@ export interface SwiftBloxNode {
   Text?: string;
   TextColor3?: Color3;
   TextSize?: number;
+  TextWrapped?: boolean;
   Font?: string;
   TextXAlignment?: 'Left' | 'Center' | 'Right';
   TextYAlignment?: 'Top' | 'Center' | 'Bottom';
-  ImageBase64?: string; // For asset uploads
+  ImageBase64?: string;
   Children: SwiftBloxNode[];
 }
