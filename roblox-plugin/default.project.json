@@ -1,0 +1,9 @@
+{
+  "name": "SwiftBloxUI",
+  "tree": {
+    "$className": "Folder",
+    "SwiftBloxPlugin": {
+      "$path": "src"
+    }
+  }
+}
