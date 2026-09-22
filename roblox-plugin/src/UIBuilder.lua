@@ -11,10 +11,15 @@ local VALID_CLASSES = {
 	["Frame"] = true,
 	["TextLabel"] = true,
 	["TextButton"] = true,
+	["TextBox"] = true,
 	["ImageLabel"] = true,
 	["ImageButton"] = true,
 	["ScrollingFrame"] = true,
+	["CanvasGroup"] = true,
+	["ViewportFrame"] = true,
 }
+
+-- ... keep the rest of UIBuilder.lua exactly the same ...
 
 local function buildNode(nodeData, parentInstance: Instance): Instance?
 	local targetClass = nodeData.ClassName or "Frame"

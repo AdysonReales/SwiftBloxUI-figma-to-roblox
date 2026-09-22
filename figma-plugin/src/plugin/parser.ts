@@ -1,11 +1,6 @@
 /// <reference types="@figma/plugin-typings" />
 
-import { SwiftBloxNode, UDim2, Vector2Data, Color3 } from './types';
-
-interface GradientData {
-  Rotation: number;
-  ColorPoints: { Position: number; Color: Color3 }[];
-}
+import { SwiftBloxNode, UDim2, Vector2Data, Color3, GradientData } from './types';
 
 function figmaColorToRoblox(paint: SolidPaint): Color3 {
   return {
@@ -29,56 +24,70 @@ function parseGradient(fill: GradientPaint): GradientData | undefined {
     }
   }));
 
-  return {
-    Rotation: 90,
-    ColorPoints: colorPoints
-  };
+  return { Rotation: 90, ColorPoints: colorPoints };
 }
 
-function getSuffixOverride(name: string): { cleanName: string; forcedClass: string | null; isExclude: boolean; isImage: boolean } {
+function getSuffixOverride(name: string): { cleanName: string; forcedClass: string | null; isExclude: boolean; isImage: boolean; isLock: boolean; isGray: boolean; scrollAxis: 'X' | 'Y' | 'XY' | null } {
   const lower = name.toLowerCase();
   
-  if (lower.includes('_exclude') || lower.includes('_ignore')) {
-    return { cleanName: name, forcedClass: null, isExclude: true, isImage: false };
-  }
+  const isExclude = lower.includes('_exclude') || lower.includes('_ignore');
+  const isLock = lower.includes('_lock');
+  const isGray = lower.includes('_gray');
+  
+  let scrollAxis: 'X' | 'Y' | 'XY' | null = null;
+  if (lower.includes('_scrollx')) scrollAxis = 'X';
+  else if (lower.includes('_scrolly')) scrollAxis = 'Y';
+  else if (lower.includes('_scroll') || lower.includes('_scrollingframe')) scrollAxis = 'XY';
 
-  // Suffix matching based on FigBlox conventions
   const suffixMap: [string, string][] = [
     ['_imagebutton', 'ImageButton'],
     ['_textbutton', 'TextButton'],
-    ['_button', 'Button'], // Handled dynamically
+    ['_button', 'Button'],
     ['_imagelabel', 'ImageLabel'],
     ['_image', 'ImageLabel'],
     ['_scrollingframe', 'ScrollingFrame'],
+    ['_scrollx', 'ScrollingFrame'],
+    ['_scrolly', 'ScrollingFrame'],
     ['_scroll', 'ScrollingFrame'],
     ['_textbox', 'TextBox'],
     ['_box', 'TextBox'],
     ['_textlabel', 'TextLabel'],
     ['_canvasgroup', 'CanvasGroup'],
+    ['_canvas', 'CanvasGroup'],
+    ['_viewportframe', 'ViewportFrame'],
+    ['_vpf', 'ViewportFrame'],
     ['_frame', 'Frame']
   ];
 
+  let cleanName = name;
+  let forcedClass: string | null = null;
+
   for (const [suffix, className] of suffixMap) {
-    if (lower.endsWith(suffix)) {
-      const clean = name.slice(0, -suffix.length).trim();
-      return {
-        cleanName: clean.length > 0 ? clean : name,
-        forcedClass: className,
-        isExclude: false,
-        isImage: className === 'ImageLabel' || className === 'ImageButton'
-      };
+    if (lower.includes(suffix)) {
+      forcedClass = className;
+      // Strip all tags from final name
+      cleanName = name.replace(new RegExp(`${suffix}|_gray|_lock|_exclude|_ignore`, 'gi'), '').trim();
+      break;
     }
   }
 
-  return { cleanName: name.replace(/\[.*?\]\s*/g, ''), forcedClass: null, isExclude: false, isImage: false };
+  // Fallback cleanup if no class suffix but has modifiers
+  cleanName = cleanName.replace(/_gray|_lock|_exclude|_ignore/gi, '').replace(/\[.*?\]\s*/g, '').trim();
+
+  return { 
+    cleanName: cleanName.length > 0 ? cleanName : 'Element', 
+    forcedClass, 
+    isExclude, 
+    isImage: forcedClass === 'ImageLabel' || forcedClass === 'ImageButton',
+    isLock,
+    isGray,
+    scrollAxis
+  };
 }
 
 function calculateUDim2(node: SceneNode, parentNode: SceneNode | null): { Size: UDim2; Position: UDim2; AnchorPoint?: Vector2Data; AspectRatio?: number } {
   if (!('absoluteBoundingBox' in node) || !node.absoluteBoundingBox) {
-    return {
-      Size: { ScaleX: 1, OffsetX: 0, ScaleY: 1, OffsetY: 0 },
-      Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 }
-    };
+    return { Size: { ScaleX: 1, OffsetX: 0, ScaleY: 1, OffsetY: 0 }, Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 } };
   }
 
   const nodeBox = node.absoluteBoundingBox;
@@ -89,18 +98,9 @@ function calculateUDim2(node: SceneNode, parentNode: SceneNode | null): { Size: 
   if (!parentNode || !('absoluteBoundingBox' in parentNode) || !parentNode.absoluteBoundingBox) {
     const isFullScreen = width >= 1200 && height >= 700;
     if (isFullScreen) {
-      return {
-        Size: { ScaleX: 1, OffsetX: 0, ScaleY: 1, OffsetY: 0 },
-        Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 },
-        AnchorPoint: { X: 0, Y: 0 }
-      };
+      return { Size: { ScaleX: 1, OffsetX: 0, ScaleY: 1, OffsetY: 0 }, Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 }, AnchorPoint: { X: 0, Y: 0 } };
     }
-    return {
-      Size: { ScaleX: 0, OffsetX: width, ScaleY: 0, OffsetY: height },
-      Position: { ScaleX: 0.5, OffsetX: 0, ScaleY: 0.5, OffsetY: 0 },
-      AnchorPoint: { X: 0.5, Y: 0.5 },
-      AspectRatio: aspectRatio
-    };
+    return { Size: { ScaleX: 0, OffsetX: width, ScaleY: 0, OffsetY: height }, Position: { ScaleX: 0.5, OffsetX: 0, ScaleY: 0.5, OffsetY: 0 }, AnchorPoint: { X: 0.5, Y: 0.5 }, AspectRatio: aspectRatio };
   }
 
   const parentBox = parentNode.absoluteBoundingBox;
@@ -109,29 +109,23 @@ function calculateUDim2(node: SceneNode, parentNode: SceneNode | null): { Size: 
   const posX = parentBox.width > 0 ? (nodeBox.x - parentBox.x) / parentBox.width : 0;
   const posY = parentBox.height > 0 ? (nodeBox.y - parentBox.y) / parentBox.height : 0;
 
-  return {
-    Size: { ScaleX: scaleX, OffsetX: 0, ScaleY: scaleY, OffsetY: 0 },
-    Position: { ScaleX: posX, OffsetX: 0, ScaleY: posY, OffsetY: 0 },
-    AnchorPoint: { X: 0, Y: 0 }
-  };
+  return { Size: { ScaleX: scaleX, OffsetX: 0, ScaleY: scaleY, OffsetY: 0 }, Position: { ScaleX: posX, OffsetX: 0, ScaleY: posY, OffsetY: 0 }, AnchorPoint: { X: 0, Y: 0 } };
 }
 
 export async function parseNode(node: SceneNode, parentNode: SceneNode | null): Promise<SwiftBloxNode | null> {
   if (!node.visible) return null;
 
-  const { cleanName, forcedClass, isExclude, isImage: forceImage } = getSuffixOverride(node.name);
+  const { cleanName, forcedClass, isExclude, isImage: forceImage, isLock, isGray, scrollAxis } = getSuffixOverride(node.name);
   if (isExclude) return null;
 
   const { Size, Position, AnchorPoint, AspectRatio } = calculateUDim2(node, parentNode);
   let className = forcedClass || 'Frame';
 
-  // Smart Button detection
   if (forcedClass === 'Button') {
     const hasTextChild = 'children' in node && node.children.some(c => c.type === 'TEXT');
     className = hasTextChild ? 'TextButton' : 'ImageButton';
   }
 
-  // Type auto-detection if no suffix override
   if (!forcedClass) {
     if (node.type === 'TEXT') className = 'TextLabel';
     if (node.type === 'VECTOR' || node.type === 'BOOLEAN_OPERATION') className = 'ImageLabel';
@@ -145,11 +139,15 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     Size,
     Position,
     AnchorPoint,
-    AspectRatio,
+    AspectRatio: isLock ? AspectRatio : undefined,
     Children: []
   };
 
-  // Extract fills (Solid or Gradient)
+  if (scrollAxis && className === 'ScrollingFrame') {
+    robloxNode.ScrollAxis = scrollAxis; // Handled in Luau mapping
+  }
+
+  // Fills & Gradients
   let solidFill: SolidPaint | undefined;
   let gradientFill: GradientPaint | undefined;
 
@@ -160,6 +158,8 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
 
   if (gradientFill) {
     robloxNode.Gradient = parseGradient(gradientFill);
+    robloxNode.BackgroundColor3 = { R: 255, G: 255, B: 255, A: 1 };
+    robloxNode.BackgroundTransparency = 0;
   }
 
   // Text Properties
@@ -168,6 +168,11 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     robloxNode.TextSize = typeof node.fontSize === 'number' ? node.fontSize : 14;
     robloxNode.BackgroundTransparency = 1;
     robloxNode.TextWrapped = true;
+    
+    if (typeof node.fontName !== 'symbol' && node.fontName) {
+      robloxNode.FontFamily = node.fontName.family;
+      robloxNode.FontStyle = node.fontName.style;
+    }
 
     if (solidFill) {
       robloxNode.TextColor3 = figmaColorToRoblox(solidFill);
@@ -190,50 +195,68 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
-  // Strokes (Borders & Text Outlines)
+  // UIStroke
   if ('strokes' in node && Array.isArray(node.strokes) && node.strokes.length > 0) {
     const solidStroke = node.strokes.find((s: Paint) => s.type === 'SOLID' && s.visible !== false) as SolidPaint | undefined;
     if (solidStroke && 'strokeWeight' in node) {
-      robloxNode.Stroke = {
-        Color: figmaColorToRoblox(solidStroke),
-        Thickness: Number(node.strokeWeight) || 1
-      };
+      robloxNode.Stroke = { Color: figmaColorToRoblox(solidStroke), Thickness: Number(node.strokeWeight) || 1 };
     }
   }
 
-  // Corner Radius
+  // UICorner
   if ('cornerRadius' in node && typeof node.cornerRadius === 'number' && node.cornerRadius > 0) {
     robloxNode.CornerRadius = node.cornerRadius;
   }
 
-  // UIListLayout logic
-  const isRootFrame = parentNode === null;
-  const isExplicitList = node.name.toLowerCase().includes('_scroll') || node.name.toLowerCase().includes('_list');
-  const hasBgOrAbs = 'children' in node && node.children.some(c => {
-    const isAbs = 'layoutPositioning' in c && c.layoutPositioning === 'ABSOLUTE';
-    return isAbs || /shadow|background|bg/i.test(c.name);
-  });
+  // UIShadow (Native Shadow)
+  if ('effects' in node && Array.isArray(node.effects)) {
+    const dropShadow = node.effects.find(e => e.type === 'DROP_SHADOW' && e.visible !== false) as DropShadowEffect | undefined;
+    if (dropShadow) {
+      robloxNode.Shadow = {
+        Color: { R: Math.round(dropShadow.color.r * 255), G: Math.round(dropShadow.color.g * 255), B: Math.round(dropShadow.color.b * 255), A: 1 },
+        Offset: { X: dropShadow.offset.x, Y: dropShadow.offset.y },
+        Blur: dropShadow.radius,
+        Transparency: 1 - dropShadow.color.a
+      };
+    }
+  }
 
-  if ((isExplicitList || (!isRootFrame && !hasBgOrAbs)) && 'layoutMode' in node && (node.layoutMode === 'HORIZONTAL' || node.layoutMode === 'VERTICAL')) {
+  // UIPadding & UIListLayout
+  const isRootFrame = parentNode === null;
+  const hasBgOrAbs = 'children' in node && node.children.some(c => ('layoutPositioning' in c && c.layoutPositioning === 'ABSOLUTE') || /shadow|background|bg/i.test(c.name));
+
+  if (!isRootFrame && !hasBgOrAbs && 'layoutMode' in node && (node.layoutMode === 'HORIZONTAL' || node.layoutMode === 'VERTICAL')) {
     robloxNode.ListLayout = {
       FillDirection: node.layoutMode === 'HORIZONTAL' ? 'Horizontal' : 'Vertical',
       Padding: node.itemSpacing || 0,
       SortOrder: 'LayoutOrder'
     };
+    
+    if (node.paddingTop > 0 || node.paddingBottom > 0 || node.paddingLeft > 0 || node.paddingRight > 0) {
+      robloxNode.Padding = {
+        Top: node.paddingTop,
+        Bottom: node.paddingBottom,
+        Left: node.paddingLeft,
+        Right: node.paddingRight
+      };
+    }
   }
 
-  // Export as Image if designated
+  // Asset Export (with _gray logic)
   if (isImageNode) {
     try {
       const bytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 2 } });
       robloxNode.ImageBase64 = figma.base64Encode(bytes);
       robloxNode.BackgroundTransparency = 1;
+      
+      if (isGray && solidFill) {
+        robloxNode.ImageColor3 = figmaColorToRoblox(solidFill);
+      }
     } catch (e) {
       console.error(`Failed to export image: ${node.name}`, e);
     }
   }
 
-  // Recurse children (skip children if node was exported directly as a flat image)
   if ('children' in node && !isImageNode) {
     for (const child of node.children) {
       const childNode = await parseNode(child, node);

@@ -42,8 +42,20 @@ function PropertyMapper.applyBasicProperties(instance: GuiObject, nodeData)
 
 	if instance:IsA("ScrollingFrame") then
 		instance.ScrollBarThickness = 6
-		instance.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		instance.AutomaticCanvasSize = Enum.AutomaticSize.XY
 		instance.CanvasSize = UDim2.new(0, 0, 0, 0)
+		
+		if nodeData.ScrollAxis == "X" then
+			instance.ScrollingDirection = Enum.ScrollingDirection.X
+			instance.AutomaticCanvasSize = Enum.AutomaticSize.X
+		elseif nodeData.ScrollAxis == "Y" then
+			instance.ScrollingDirection = Enum.ScrollingDirection.Y
+			instance.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		end
+	end
+	
+	if instance:IsA("CanvasGroup") then
+		instance.GroupTransparency = nodeData.BackgroundTransparency or 0
 	end
 end
 
@@ -60,11 +72,24 @@ function PropertyMapper.applyDecorations(instance: GuiObject, nodeData)
 		stroke.Name = "UIStroke"
 		stroke.Color = toColor3(nodeData.Stroke.Color)
 		stroke.Thickness = tonumber(nodeData.Stroke.Thickness) or 1
-		stroke.ApplyStrokeMode = instance:IsA("TextLabel") and Enum.ApplyStrokeMode.Contextual or Enum.ApplyStrokeMode.Border
+		stroke.ApplyStrokeMode = (instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox"))
+			and Enum.ApplyStrokeMode.Contextual
+			or Enum.ApplyStrokeMode.Border
 		stroke.Parent = instance
+	end
+	
+	if nodeData.Shadow then
+		local shadow = Instance.new("UIShadow")
+		shadow.Name = "UIShadow"
+		shadow.Elevation = tonumber(nodeData.Shadow.Blur) or 4
+		shadow.ShadowTransparency = tonumber(nodeData.Shadow.Transparency) or 0.5
+		shadow.Parent = instance
 	end
 
 	if nodeData.Gradient then
+		instance.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		instance.BackgroundTransparency = 0
+
 		local gradient = Instance.new("UIGradient")
 		gradient.Name = "UIGradient"
 		gradient.Rotation = nodeData.Gradient.Rotation or 90
@@ -88,6 +113,16 @@ function PropertyMapper.applyDecorations(instance: GuiObject, nodeData)
 		ratioConstraint.Parent = instance
 	end
 
+	if nodeData.Padding then
+		local padding = Instance.new("UIPadding")
+		padding.Name = "UIPadding"
+		padding.PaddingTop = UDim.new(0, tonumber(nodeData.Padding.Top) or 0)
+		padding.PaddingBottom = UDim.new(0, tonumber(nodeData.Padding.Bottom) or 0)
+		padding.PaddingLeft = UDim.new(0, tonumber(nodeData.Padding.Left) or 0)
+		padding.PaddingRight = UDim.new(0, tonumber(nodeData.Padding.Right) or 0)
+		padding.Parent = instance
+	end
+
 	if nodeData.ListLayout then
 		local layout = Instance.new("UIListLayout")
 		layout.Name = "UIListLayout"
@@ -100,12 +135,18 @@ function PropertyMapper.applyDecorations(instance: GuiObject, nodeData)
 	end
 end
 
-function PropertyMapper.applyTextProperties(instance: TextLabel | TextButton, nodeData)
+function PropertyMapper.applyTextProperties(instance: TextLabel | TextButton | TextBox, nodeData)
 	instance.Text = nodeData.Text or ""
 	instance.TextSize = tonumber(nodeData.TextSize) or 14
-	instance.Font = Enum.Font.FredokaOne -- Matches playful/cartoon styles better than Gotham
+	instance.Font = Enum.Font.FredokaOne
 	instance.AutoLocalize = false
 	instance.TextWrapped = nodeData.TextWrapped ~= nil and nodeData.TextWrapped or true
+	instance.BackgroundTransparency = 1
+
+	if instance:IsA("TextBox") then
+		instance.ClearTextOnFocus = false
+		instance.PlaceholderText = "Input..."
+	end
 
 	if nodeData.TextColor3 then
 		instance.TextColor3 = toColor3(nodeData.TextColor3)
@@ -130,9 +171,13 @@ end
 
 function PropertyMapper.applyImageProperties(instance: ImageLabel | ImageButton, nodeData)
 	instance.ScaleType = Enum.ScaleType.Fit
+	
+	if nodeData.ImageColor3 then
+		instance.ImageColor3 = toColor3(nodeData.ImageColor3)
+	end
+
 	if nodeData.ImageBase64 then
 		instance:SetAttribute("FigmaBase64Data", nodeData.ImageBase64)
-		-- Check if an asset matching this instance already exists in ServerStorage or ContentProvider
 		instance.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 	end
 end
