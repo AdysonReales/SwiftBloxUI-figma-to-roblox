@@ -65,13 +65,11 @@ function getSuffixOverride(name: string): { cleanName: string; forcedClass: stri
   for (const [suffix, className] of suffixMap) {
     if (lower.includes(suffix)) {
       forcedClass = className;
-      // Strip all tags from final name
       cleanName = name.replace(new RegExp(`${suffix}|_gray|_lock|_exclude|_ignore`, 'gi'), '').trim();
       break;
     }
   }
 
-  // Fallback cleanup if no class suffix but has modifiers
   cleanName = cleanName.replace(/_gray|_lock|_exclude|_ignore/gi, '').replace(/\[.*?\]\s*/g, '').trim();
 
   return { 
@@ -144,10 +142,9 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
   };
 
   if (scrollAxis && className === 'ScrollingFrame') {
-    robloxNode.ScrollAxis = scrollAxis; // Handled in Luau mapping
+    robloxNode.ScrollAxis = scrollAxis;
   }
 
-  // Fills & Gradients
   let solidFill: SolidPaint | undefined;
   let gradientFill: GradientPaint | undefined;
 
@@ -162,14 +159,13 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     robloxNode.BackgroundTransparency = 0;
   }
 
-  // Text Properties
   if (node.type === 'TEXT' && !isImageNode) {
     robloxNode.Text = node.characters;
-    robloxNode.TextSize = typeof node.fontSize === 'number' ? node.fontSize : 14;
+    robloxNode.TextSize = (typeof node.fontSize === 'number') ? node.fontSize : 14;
     robloxNode.BackgroundTransparency = 1;
     robloxNode.TextWrapped = true;
     
-    if (typeof node.fontName !== 'symbol' && node.fontName) {
+    if (node.fontName && typeof node.fontName !== 'symbol') {
       robloxNode.FontFamily = node.fontName.family;
       robloxNode.FontStyle = node.fontName.style;
     }
@@ -195,20 +191,17 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
-  // UIStroke
   if ('strokes' in node && Array.isArray(node.strokes) && node.strokes.length > 0) {
     const solidStroke = node.strokes.find((s: Paint) => s.type === 'SOLID' && s.visible !== false) as SolidPaint | undefined;
-    if (solidStroke && 'strokeWeight' in node) {
-      robloxNode.Stroke = { Color: figmaColorToRoblox(solidStroke), Thickness: Number(node.strokeWeight) || 1 };
+    if (solidStroke && 'strokeWeight' in node && typeof node.strokeWeight === 'number') {
+      robloxNode.Stroke = { Color: figmaColorToRoblox(solidStroke), Thickness: node.strokeWeight };
     }
   }
 
-  // UICorner
   if ('cornerRadius' in node && typeof node.cornerRadius === 'number' && node.cornerRadius > 0) {
     robloxNode.CornerRadius = node.cornerRadius;
   }
 
-  // UIShadow (Native Shadow)
   if ('effects' in node && Array.isArray(node.effects)) {
     const dropShadow = node.effects.find(e => e.type === 'DROP_SHADOW' && e.visible !== false) as DropShadowEffect | undefined;
     if (dropShadow) {
@@ -221,7 +214,6 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
-  // UIPadding & UIListLayout
   const isRootFrame = parentNode === null;
   const hasBgOrAbs = 'children' in node && node.children.some(c => ('layoutPositioning' in c && c.layoutPositioning === 'ABSOLUTE') || /shadow|background|bg/i.test(c.name));
 
@@ -232,7 +224,7 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
       SortOrder: 'LayoutOrder'
     };
     
-    if (node.paddingTop > 0 || node.paddingBottom > 0 || node.paddingLeft > 0 || node.paddingRight > 0) {
+    if ('paddingTop' in node && (node.paddingTop > 0 || node.paddingBottom > 0 || node.paddingLeft > 0 || node.paddingRight > 0)) {
       robloxNode.Padding = {
         Top: node.paddingTop,
         Bottom: node.paddingBottom,
@@ -242,7 +234,6 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
-  // Asset Export (with _gray logic)
   if (isImageNode) {
     try {
       const bytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 2 } });

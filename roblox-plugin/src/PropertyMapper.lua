@@ -96,8 +96,17 @@ function PropertyMapper.applyDecorations(instance: GuiObject, nodeData)
 
 		local keypoints = {}
 		for _, pt in ipairs(nodeData.Gradient.ColorPoints) do
-			table.insert(keypoints, ColorSequenceKeypoint.new(pt.Position, toColor3(pt.Color)))
+			table.insert(keypoints, ColorSequenceKeypoint.new(math.clamp(tonumber(pt.Position) or 0, 0, 1), toColor3(pt.Color)))
 		end
+		
+		table.sort(keypoints, function(a, b) return a.Time < b.Time end)
+		if #keypoints > 0 and keypoints[1].Time > 0 then
+			table.insert(keypoints, 1, ColorSequenceKeypoint.new(0.0, keypoints[1].Value))
+		end
+		if #keypoints > 0 and keypoints[#keypoints].Time < 1 then
+			table.insert(keypoints, ColorSequenceKeypoint.new(1.0, keypoints[#keypoints].Value))
+		end
+
 		if #keypoints >= 2 then
 			gradient.Color = ColorSequence.new(keypoints)
 			gradient.Parent = instance
