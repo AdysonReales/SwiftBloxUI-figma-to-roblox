@@ -81,8 +81,12 @@ function PropertyMapper.applyDecorations(instance: GuiObject, nodeData)
 	if nodeData.Shadow then
 		local shadow = Instance.new("UIShadow")
 		shadow.Name = "UIShadow"
-		shadow.Elevation = tonumber(nodeData.Shadow.Blur) or 4
-		shadow.ShadowTransparency = tonumber(nodeData.Shadow.Transparency) or 0.5
+		-- BlurRadius requires a UDim value in Roblox
+		shadow.BlurRadius = UDim.new(0, tonumber(nodeData.Shadow.Blur) or 4)
+		shadow.Transparency = tonumber(nodeData.Shadow.Transparency) or 0.5
+		if nodeData.Shadow.Offset then
+			shadow.Offset = UDim2.new(0, tonumber(nodeData.Shadow.Offset.X) or 0, 0, tonumber(nodeData.Shadow.Offset.Y) or 2)
+		end
 		shadow.Parent = instance
 	end
 
@@ -96,10 +100,12 @@ function PropertyMapper.applyDecorations(instance: GuiObject, nodeData)
 
 		local keypoints = {}
 		for _, pt in ipairs(nodeData.Gradient.ColorPoints) do
-			table.insert(keypoints, ColorSequenceKeypoint.new(math.clamp(tonumber(pt.Position) or 0, 0, 1), toColor3(pt.Color)))
+			local timePos = math.clamp(tonumber(pt.Position) or 0, 0, 1)
+			table.insert(keypoints, ColorSequenceKeypoint.new(timePos, toColor3(pt.Color)))
 		end
 		
 		table.sort(keypoints, function(a, b) return a.Time < b.Time end)
+		
 		if #keypoints > 0 and keypoints[1].Time > 0 then
 			table.insert(keypoints, 1, ColorSequenceKeypoint.new(0.0, keypoints[1].Value))
 		end

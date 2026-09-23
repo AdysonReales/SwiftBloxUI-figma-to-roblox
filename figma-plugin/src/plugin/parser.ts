@@ -15,7 +15,7 @@ function parseGradient(fill: GradientPaint): GradientData | undefined {
   if (!fill.gradientStops || fill.gradientStops.length === 0) return undefined;
   
   const colorPoints = fill.gradientStops.map(stop => ({
-    Position: Number(stop.position.toFixed(2)),
+    Position: typeof stop.position === 'number' ? Number(stop.position.toFixed(2)) : 0,
     Color: {
       R: Math.round(stop.color.r * 255),
       G: Math.round(stop.color.g * 255),
@@ -191,6 +191,7 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
+  // Guard against symbol types for stroke weight
   if ('strokes' in node && Array.isArray(node.strokes) && node.strokes.length > 0) {
     const solidStroke = node.strokes.find((s: Paint) => s.type === 'SOLID' && s.visible !== false) as SolidPaint | undefined;
     if (solidStroke && 'strokeWeight' in node && typeof node.strokeWeight === 'number') {
@@ -198,6 +199,7 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
+  // Guard against symbol types for corner radius (e.g. figma.mixed)
   if ('cornerRadius' in node && typeof node.cornerRadius === 'number' && node.cornerRadius > 0) {
     robloxNode.CornerRadius = node.cornerRadius;
   }
@@ -208,7 +210,7 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
       robloxNode.Shadow = {
         Color: { R: Math.round(dropShadow.color.r * 255), G: Math.round(dropShadow.color.g * 255), B: Math.round(dropShadow.color.b * 255), A: 1 },
         Offset: { X: dropShadow.offset.x, Y: dropShadow.offset.y },
-        Blur: dropShadow.radius,
+        Blur: typeof dropShadow.radius === 'number' ? dropShadow.radius : 4,
         Transparency: 1 - dropShadow.color.a
       };
     }
@@ -220,16 +222,16 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
   if (!isRootFrame && !hasBgOrAbs && 'layoutMode' in node && (node.layoutMode === 'HORIZONTAL' || node.layoutMode === 'VERTICAL')) {
     robloxNode.ListLayout = {
       FillDirection: node.layoutMode === 'HORIZONTAL' ? 'Horizontal' : 'Vertical',
-      Padding: node.itemSpacing || 0,
+      Padding: typeof node.itemSpacing === 'number' ? node.itemSpacing : 0,
       SortOrder: 'LayoutOrder'
     };
     
-    if ('paddingTop' in node && (node.paddingTop > 0 || node.paddingBottom > 0 || node.paddingLeft > 0 || node.paddingRight > 0)) {
+    if ('paddingTop' in node && typeof node.paddingTop === 'number' && (node.paddingTop > 0 || node.paddingBottom > 0 || node.paddingLeft > 0 || node.paddingRight > 0)) {
       robloxNode.Padding = {
-        Top: node.paddingTop,
-        Bottom: node.paddingBottom,
-        Left: node.paddingLeft,
-        Right: node.paddingRight
+        Top: typeof node.paddingTop === 'number' ? node.paddingTop : 0,
+        Bottom: typeof node.paddingBottom === 'number' ? node.paddingBottom : 0,
+        Left: typeof node.paddingLeft === 'number' ? node.paddingLeft : 0,
+        Right: typeof node.paddingRight === 'number' ? node.paddingRight : 0
       };
     }
   }
