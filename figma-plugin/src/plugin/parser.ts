@@ -146,17 +146,24 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
   }
 
   let solidFill: SolidPaint | undefined;
-  let gradientFill: GradientPaint | undefined;
+  let gradientFills: GradientPaint[] = [];
 
   if ('fills' in node && Array.isArray(node.fills)) {
-    solidFill = node.fills.find((f: Paint) => f.type === 'SOLID' && f.visible !== false) as SolidPaint | undefined;
-    gradientFill = node.fills.find((f: Paint) => (f.type === 'GRADIENT_LINEAR' || f.type === 'GRADIENT_RADIAL') && f.visible !== false) as GradientPaint | undefined;
+    const visibleFills = node.fills.filter((f: Paint) => f.visible !== false);
+    solidFill = visibleFills.find((f: Paint) => f.type === 'SOLID') as SolidPaint | undefined;
+    gradientFills = visibleFills.filter((f: Paint) => f.type === 'GRADIENT_LINEAR' || f.type === 'GRADIENT_RADIAL') as GradientPaint[];
   }
 
-  if (gradientFill) {
-    robloxNode.Gradient = parseGradient(gradientFill);
+  if (gradientFills.length > 0) {
+    robloxNode.Gradient = parseGradient(gradientFills[0]);
     robloxNode.BackgroundColor3 = { R: 255, G: 255, B: 255, A: 1 };
     robloxNode.BackgroundTransparency = 0;
+  } else if (solidFill && !isImageNode) {
+    const color = figmaColorToRoblox(solidFill);
+    robloxNode.BackgroundColor3 = color;
+    robloxNode.BackgroundTransparency = 1 - color.A;
+  } else if (!isImageNode) {
+    robloxNode.BackgroundTransparency = 1;
   }
 
   if (node.type === 'TEXT' && !isImageNode) {
@@ -181,17 +188,8 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     if (node.textAlignVertical === 'TOP') robloxNode.TextYAlignment = 'Top';
     else if (node.textAlignVertical === 'BOTTOM') robloxNode.TextYAlignment = 'Bottom';
     else robloxNode.TextYAlignment = 'Center';
-  } else {
-    if (solidFill && !isImageNode) {
-      const color = figmaColorToRoblox(solidFill);
-      robloxNode.BackgroundColor3 = color;
-      robloxNode.BackgroundTransparency = 1 - color.A;
-    } else if (!solidFill && !gradientFill && !isImageNode) {
-      robloxNode.BackgroundTransparency = 1;
-    }
   }
 
-  // Guard against symbol types for stroke weight
   if ('strokes' in node && Array.isArray(node.strokes) && node.strokes.length > 0) {
     const solidStroke = node.strokes.find((s: Paint) => s.type === 'SOLID' && s.visible !== false) as SolidPaint | undefined;
     if (solidStroke && 'strokeWeight' in node && typeof node.strokeWeight === 'number') {
@@ -199,7 +197,6 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     }
   }
 
-  // Guard against symbol types for corner radius (e.g. figma.mixed)
   if ('cornerRadius' in node && typeof node.cornerRadius === 'number' && node.cornerRadius > 0) {
     robloxNode.CornerRadius = node.cornerRadius;
   }
