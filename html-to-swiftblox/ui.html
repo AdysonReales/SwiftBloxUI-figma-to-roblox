@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; padding: 12px; background: #1e1e1e; color: #fff; }
+    textarea { width: 100%; height: 250px; background: #2d2d2d; color: #fff; border: 1px solid #444; border-radius: 6px; padding: 8px; font-family: monospace; resize: vertical; }
+    button { width: 100%; padding: 12px; margin-top: 12px; background: #007aff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #renderArea { position: absolute; top: -9999px; left: -9999px; width: 1920px; }
+  </style>
+</head>
+<body>
+  <h3>⚡ HTML to SwiftBlox</h3>
+  <textarea id="htmlInput" placeholder="Paste your HTML & Inline CSS here..."></textarea>
+  <button id="convertBtn">Generate Roblox Layout</button>
+  
+  <!-- Invisible container to calculate actual browser layout -->
+  <div id="renderArea"></div>
+
+  <script>
+    function parseColor(cssColor) {
+      if (!cssColor || cssColor === 'transparent' || cssColor === 'rgba(0, 0, 0, 0)') return null;
+      let rgb = cssColor.match(/\d+/g);
+      if (!rgb || rgb.length < 3) return null;
+      return {
+        r: parseInt(rgb[0]) / 255,
+        g: parseInt(rgb[1]) / 255,
+        b: parseInt(rgb[2]) / 255,
+        a: rgb[3] !== undefined ? parseFloat(rgb[3]) : 1
+      };
+    }
+
+    document.getElementById('convertBtn').onclick = () => {
+      const renderArea = document.getElementById('renderArea');
+      renderArea.innerHTML = document.getElementById('htmlInput').value;
+
+      const nodes = [];
+      const rootRect = renderArea.getBoundingClientRect();
+
+      function walkDOM(el) {
+        if (el.nodeType !== Node.ELEMENT_NODE) return;
+        if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const style = window.getComputedStyle(el);
+        const hasBg = style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent';
+        const hasBorder = style.borderWidth !== '0px' && style.borderStyle !== 'none';
+        
+        let hasDirectText = false;
+        let textContent = "";
+
+        for (let child of el.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE && child.textContent.trim().length > 0) {
+            hasDirectText = true;
+            textContent = child.textContent.trim();
+            break;
+          }
+        }
+
+        // Draw structural Frame
+        if (hasBg || hasBorder || el.tagName === 'IMG' || el.tagName === 'SVG') {
+          nodes.push({
+            type: 'FRAME',
+            name: el.tagName + (el.className ? '.' + el.className.split(' ')[0] : ''),
+            x: rect.left - rootRect.left,
+            y: rect.top - rootRect.top,
+            width: rect.width,
+            height: rect.height,
+            bg: hasBg ? parseColor(style.backgroundColor) : null,
+            radius: parseFloat(style.borderRadius) || 0,
+            border: hasBorder ? { color: parseColor(style.borderColor), width: parseFloat(style.borderWidth) } : null,
+            isImage: el.tagName === 'IMG' || el.tagName === 'SVG'
+          });
+        }
+
+        // Draw clean TextNode (Zero Background)
+        if (hasDirectText) {
+          nodes.push({
+            type: 'TEXT',
+            name: textContent.substring(0, 15),
+            text: textContent,
+            x: rect.left - rootRect.left,
+            y: rect.top - rootRect.top,
+            width: rect.width,
+            height: rect.height,
+            color: parseColor(style.color) || {r: 0, g: 0, b: 0, a: 1},
+            fontSize: parseFloat(style.fontSize) || 14,
+            fontWeight: parseInt(style.fontWeight) >= 600 ? 'Bold' : 'Regular',
+            textAlign: style.textAlign
+          });
+        }
+
+        for (let child of el.children) {
+          walkDOM(child);
+        }
+      }
+
+      walkDOM(renderArea);
+      
+      parent.postMessage({ pluginMessage: { type: 'draw-ui', nodes: nodes, width: renderArea.scrollWidth, height: renderArea.scrollHeight } }, '*');
+    };
+  </script>
+</body>
+</html>

@@ -18,8 +18,16 @@ export interface Color3 {
 }
 
 export interface GradientData {
+  Type: 'Linear' | 'Radial' | 'Conical';
   Rotation: number;
-  ColorPoints: { Position: number; Color: Color3 }[];
+  ColorPoints: {
+    Position: number;
+    Color: Color3;
+  }[];
+  TransparencyPoints: {
+    Position: number;
+    Transparency: number;
+  }[];
 }
 
 export interface PaddingData {
@@ -42,28 +50,33 @@ export interface SwiftBloxNode {
   Size: UDim2;
   Position: UDim2;
   AnchorPoint?: Vector2Data;
+  Rotation?: number;
   AspectRatio?: number;
-  
   BackgroundColor3?: Color3;
   BackgroundTransparency?: number;
   CornerRadius?: number;
-  Stroke?: { Color: Color3; Thickness: number };
+  Stroke?: {
+    Color: Color3;
+    Thickness: number;
+  };
   Gradient?: GradientData;
   Padding?: PaddingData;
   Shadow?: ShadowData;
-  ListLayout?: { FillDirection: 'Horizontal' | 'Vertical'; Padding: number; SortOrder: 'LayoutOrder' };
-  
+  ListLayout?: {
+    FillDirection: 'Horizontal' | 'Vertical';
+    Padding: number;
+    SortOrder: 'LayoutOrder';
+  };
   Text?: string;
   TextColor3?: Color3;
   TextSize?: number;
   TextWrapped?: boolean;
   FontFamily?: string;
   FontStyle?: string;
+  FontWeight?: string;
   TextXAlignment?: 'Left' | 'Center' | 'Right';
   TextYAlignment?: 'Top' | 'Center' | 'Bottom';
-  
   ImageBase64?: string;
   ImageColor3?: Color3;
-  
   Children: SwiftBloxNode[];
 }

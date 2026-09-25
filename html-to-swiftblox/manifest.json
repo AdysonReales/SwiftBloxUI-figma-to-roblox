@@ -1,0 +1,8 @@
+{
+  "name": "HTML to SwiftBlox",
+  "id": "html-to-swiftblox",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"]
+}

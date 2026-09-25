@@ -1,0 +1,17 @@
+{
+  "name": "html-to-swiftblox",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.139.0",
+    "typescript": "^7.0.2"
+  }
+}

@@ -3,7 +3,7 @@ local UIBuilder = require(script.Parent.UIBuilder)
 
 -- Safely require Fireporter importer if available
 local hasFireporter, FireporterImporter = pcall(function()
-	return require(script.Parent.FireporterImporter)
+    return require(script.Parent.FireporterImporter)
 end)
 
 local toolbar = plugin:CreateToolbar("SwiftBlox UI")
@@ -33,39 +33,33 @@ end)
 
 -- Unified builder handler that supports standard SwiftBlox or Fireporter JSON schemas
 local function processIncomingJSON(rawJsonString)
-	local success, decoded = pcall(function()
-		return HttpService:JSONDecode(rawJsonString)
-	end)
+    local success, decoded = pcall(function()
+        return HttpService:JSONDecode(rawJsonString)
+    end)
 
-	if not success or not decoded then
-		return false, "Invalid JSON format: " .. tostring(decoded)
-	end
+    if not success or not decoded then
+        return false, "Invalid JSON format: " .. tostring(decoded)
+    end
 
-	-- Check if payload uses Fireporter schema (Type instead of ClassName)
-	if decoded.Type and decoded.Size and decoded.Position and not decoded.ClassName then
-		if hasFireporter and FireporterImporter then
-			local screenGui = Instance.new("ScreenGui")
-			screenGui.Name = decoded.Name or "Fireporter_Import"
-			screenGui.ResetOnSpawn = false
-			
-			local parentTarget = game:GetService("CoreGui")
-			local successTarget, targetContainer = pcall(function()
-				return game.Players.LocalPlayer:WaitForChild("PlayerGui")
-			end)
-			if successTarget and targetContainer then
-				parentTarget = targetContainer
-			end
-			
-			screenGui.Parent = parentTarget
-			FireporterImporter.buildTree(decoded, screenGui)
-			return true, screenGui.Name
-		else
-			return false, "Fireporter payload detected, but FireporterImporter module is missing!"
-		end
-	else
-		-- Fallback to your native SwiftBlox UIBuilder pipeline
-		return UIBuilder.buildFromJSON(rawJsonString)
-	end
+    -- Check if payload uses Fireporter schema (Type instead of ClassName)
+    if decoded.Type and decoded.Size and decoded.Position and not decoded.ClassName then
+        if hasFireporter and FireporterImporter then
+            local screenGui = Instance.new("ScreenGui")
+            screenGui.Name = decoded.Name or "Fireporter_Import"
+            screenGui.ResetOnSpawn = false
+            
+            -- Changed to target StarterGui so it saves with your game!
+            screenGui.Parent = game:GetService("StarterGui")
+            
+            FireporterImporter.buildTree(decoded, screenGui)
+            return true, screenGui.Name
+        else
+            return false, "Fireporter payload detected, but FireporterImporter module is missing!"
+        end
+    else
+        -- Fallback to native SwiftBlox pipeline
+        return UIBuilder.buildFromJSON(rawJsonString)
+    end
 end
 
 local hasIris, Iris = pcall(function()
@@ -82,7 +76,7 @@ if hasIris and type(Iris) == "table" and Iris.Init then
     Iris:Connect(function()
         Iris.Window({"SwiftBlox Importer", [Iris.Args.Window.NoClose] = true, [Iris.Args.Window.NoResize] = false})
             Iris.Text({"⚡ SwiftBlox Importer", [Iris.Args.Text.Bold] = true})
-            Iris.Text({"Import responsive layouts directly into StarterGui."})
+            Iris.Text({"Import responsive layouts directly into CoreGui."})
             Iris.Separator()
 
             Iris.Text({"Option A: Manual Payload", [Iris.Args.Text.Bold] = true})

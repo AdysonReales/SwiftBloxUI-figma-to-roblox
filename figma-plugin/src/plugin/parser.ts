@@ -1,6 +1,9 @@
 /// <reference types="@figma/plugin-typings" />
-
 import { SwiftBloxNode, UDim2, Vector2Data, Color3, GradientData } from './types';
+
+function round(value: number, decimals = 3): number {
+  return Number(value.toFixed(decimals));
+}
 
 function figmaColorToRoblox(paint: SolidPaint): Color3 {
   return {
@@ -11,139 +14,68 @@ function figmaColorToRoblox(paint: SolidPaint): Color3 {
   };
 }
 
-function parseGradient(fill: GradientPaint): GradientData | undefined {
+function parseGradient(fill: GradientPaint, width: number, height: number): GradientData | undefined {
   if (!fill.gradientStops || fill.gradientStops.length === 0) return undefined;
-  
-  const colorPoints = fill.gradientStops.map(stop => ({
-    Position: typeof stop.position === 'number' ? Number(stop.position.toFixed(2)) : 0,
-    Color: {
-      R: Math.round(stop.color.r * 255),
-      G: Math.round(stop.color.g * 255),
-      B: Math.round(stop.color.b * 255),
-      A: stop.color.a
-    }
-  }));
+  const colorPoints = fill.gradientStops.map(stop => ({ Position: Number(stop.position.toFixed(4)), Color: { R: Math.round(stop.color.r * 255), G: Math.round(stop.color.g * 255), B: Math.round(stop.color.b * 255), A: stop.color.a } }));
+  const transparencyPoints = fill.gradientStops.map(stop => ({ Position: Number(stop.position.toFixed(4)), Transparency: 1 - stop.color.a }));
 
-  return { Rotation: 90, ColorPoints: colorPoints };
+  let type: GradientData['Type'] = 'Linear';
+  if (fill.type === 'GRADIENT_RADIAL') type = 'Radial';
+  else if (fill.type === 'GRADIENT_ANGULAR') type = 'Conical';
+
+  let rotation = 0;
+  const fillAny = fill as any;
+  if (fill.type === 'GRADIENT_LINEAR' && fillAny.gradientHandlePositions && fillAny.gradientHandlePositions.length >= 2) {
+    const dx = (fillAny.gradientHandlePositions[1].x - fillAny.gradientHandlePositions[0].x) * (width || 1);
+    const dy = (fillAny.gradientHandlePositions[1].y - fillAny.gradientHandlePositions[0].y) * (height || 1);
+    rotation = (Math.atan2(dy, dx) * 180) / Math.PI;
+    if (rotation < 0) rotation += 360;
+    rotation = Number(rotation.toFixed(2));
+  }
+  return { Type: type, Rotation: rotation, ColorPoints: colorPoints, TransparencyPoints: transparencyPoints };
 }
 
-function getSuffixOverride(name: string): { cleanName: string; forcedClass: string | null; isExclude: boolean; isImage: boolean; isLock: boolean; isGray: boolean; scrollAxis: 'X' | 'Y' | 'XY' | null } {
-  const lower = name.toLowerCase();
+function calculateUDim2(node: SceneNode, parentNode: SceneNode | null): { Size: UDim2; Position: UDim2; AnchorPoint?: Vector2Data } {
+  if (!('absoluteBoundingBox' in node) || !node.absoluteBoundingBox) return { Size: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 }, Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 }, AnchorPoint: { X: 0, Y: 0 } };
   
-  const isExclude = lower.includes('_exclude') || lower.includes('_ignore');
-  const isLock = lower.includes('_lock');
-  const isGray = lower.includes('_gray');
-  
-  let scrollAxis: 'X' | 'Y' | 'XY' | null = null;
-  if (lower.includes('_scrollx')) scrollAxis = 'X';
-  else if (lower.includes('_scrolly')) scrollAxis = 'Y';
-  else if (lower.includes('_scroll') || lower.includes('_scrollingframe')) scrollAxis = 'XY';
-
-  const suffixMap: [string, string][] = [
-    ['_imagebutton', 'ImageButton'],
-    ['_textbutton', 'TextButton'],
-    ['_button', 'Button'],
-    ['_imagelabel', 'ImageLabel'],
-    ['_image', 'ImageLabel'],
-    ['_scrollingframe', 'ScrollingFrame'],
-    ['_scrollx', 'ScrollingFrame'],
-    ['_scrolly', 'ScrollingFrame'],
-    ['_scroll', 'ScrollingFrame'],
-    ['_textbox', 'TextBox'],
-    ['_box', 'TextBox'],
-    ['_textlabel', 'TextLabel'],
-    ['_canvasgroup', 'CanvasGroup'],
-    ['_canvas', 'CanvasGroup'],
-    ['_viewportframe', 'ViewportFrame'],
-    ['_vpf', 'ViewportFrame'],
-    ['_frame', 'Frame']
-  ];
-
-  let cleanName = name;
-  let forcedClass: string | null = null;
-
-  for (const [suffix, className] of suffixMap) {
-    if (lower.includes(suffix)) {
-      forcedClass = className;
-      cleanName = name.replace(new RegExp(`${suffix}|_gray|_lock|_exclude|_ignore`, 'gi'), '').trim();
-      break;
-    }
-  }
-
-  cleanName = cleanName.replace(/_gray|_lock|_exclude|_ignore/gi, '').replace(/\[.*?\]\s*/g, '').trim();
-
-  return { 
-    cleanName: cleanName.length > 0 ? cleanName : 'Element', 
-    forcedClass, 
-    isExclude, 
-    isImage: forcedClass === 'ImageLabel' || forcedClass === 'ImageButton',
-    isLock,
-    isGray,
-    scrollAxis
-  };
-}
-
-function calculateUDim2(node: SceneNode, parentNode: SceneNode | null): { Size: UDim2; Position: UDim2; AnchorPoint?: Vector2Data; AspectRatio?: number } {
-  if (!('absoluteBoundingBox' in node) || !node.absoluteBoundingBox) {
-    return { Size: { ScaleX: 1, OffsetX: 0, ScaleY: 1, OffsetY: 0 }, Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 } };
-  }
-
-  const nodeBox = node.absoluteBoundingBox;
-  const width = Math.round(nodeBox.width);
-  const height = Math.round(nodeBox.height);
-  const aspectRatio = height > 0 ? Number((width / height).toFixed(4)) : undefined;
+  const width = round(node.absoluteBoundingBox.width);
+  const height = round(node.absoluteBoundingBox.height);
 
   if (!parentNode || !('absoluteBoundingBox' in parentNode) || !parentNode.absoluteBoundingBox) {
-    const isFullScreen = width >= 1200 && height >= 700;
-    if (isFullScreen) {
-      return { Size: { ScaleX: 1, OffsetX: 0, ScaleY: 1, OffsetY: 0 }, Position: { ScaleX: 0, OffsetX: 0, ScaleY: 0, OffsetY: 0 }, AnchorPoint: { X: 0, Y: 0 } };
-    }
-    return { Size: { ScaleX: 0, OffsetX: width, ScaleY: 0, OffsetY: height }, Position: { ScaleX: 0.5, OffsetX: 0, ScaleY: 0.5, OffsetY: 0 }, AnchorPoint: { X: 0.5, Y: 0.5 }, AspectRatio: aspectRatio };
+    return { Size: { ScaleX: 0, OffsetX: width, ScaleY: 0, OffsetY: height }, Position: { ScaleX: 0.5, OffsetX: 0, ScaleY: 0.5, OffsetY: 0 }, AnchorPoint: { X: 0.5, Y: 0.5 } };
   }
 
-  const parentBox = parentNode.absoluteBoundingBox;
-  const scaleX = parentBox.width > 0 ? nodeBox.width / parentBox.width : 0;
-  const scaleY = parentBox.height > 0 ? nodeBox.height / parentBox.height : 0;
-  const posX = parentBox.width > 0 ? (nodeBox.x - parentBox.x) / parentBox.width : 0;
-  const posY = parentBox.height > 0 ? (nodeBox.y - parentBox.y) / parentBox.height : 0;
-
-  return { Size: { ScaleX: scaleX, OffsetX: 0, ScaleY: scaleY, OffsetY: 0 }, Position: { ScaleX: posX, OffsetX: 0, ScaleY: posY, OffsetY: 0 }, AnchorPoint: { X: 0, Y: 0 } };
+  return {
+    Size: { ScaleX: 0, OffsetX: width, ScaleY: 0, OffsetY: height },
+    Position: { ScaleX: 0, OffsetX: round(node.absoluteBoundingBox.x - parentNode.absoluteBoundingBox.x), ScaleY: 0, OffsetY: round(node.absoluteBoundingBox.y - parentNode.absoluteBoundingBox.y) },
+    AnchorPoint: { X: 0, Y: 0 }
+  };
 }
 
 export async function parseNode(node: SceneNode, parentNode: SceneNode | null): Promise<SwiftBloxNode | null> {
   if (!node.visible) return null;
 
-  const { cleanName, forcedClass, isExclude, isImage: forceImage, isLock, isGray, scrollAxis } = getSuffixOverride(node.name);
-  if (isExclude) return null;
+  let className = 'Frame';
+  const rawName = node.name.toLowerCase();
+  
+  // DETECT SVGS, ICONS, AND VECTORS GENERATED BY HTML-TO-FIGMA
+  const isSvgOrIcon = rawName.includes('svg') || rawName.includes('icon') || rawName.includes('star') || 
+                      node.type === 'VECTOR' || node.type === 'BOOLEAN_OPERATION' || node.type === 'ELLIPSE' || node.type === 'POLYGON';
 
-  const { Size, Position, AnchorPoint, AspectRatio } = calculateUDim2(node, parentNode);
-  let className = forcedClass || 'Frame';
+  if (node.type === 'TEXT') className = 'TextLabel';
+  if (isSvgOrIcon) className = 'ImageLabel';
 
-  if (forcedClass === 'Button') {
-    const hasTextChild = 'children' in node && node.children.some(c => c.type === 'TEXT');
-    className = hasTextChild ? 'TextButton' : 'ImageButton';
-  }
-
-  if (!forcedClass) {
-    if (node.type === 'TEXT') className = 'TextLabel';
-    if (node.type === 'VECTOR' || node.type === 'BOOLEAN_OPERATION') className = 'ImageLabel';
-  }
-
-  const isImageNode = forceImage || className === 'ImageLabel' || className === 'ImageButton';
+  const isImageNode = className === 'ImageLabel';
+  const nodeBox = ('absoluteBoundingBox' in node && node.absoluteBoundingBox) ? node.absoluteBoundingBox : { width: 0, height: 0 };
+  const { Size, Position, AnchorPoint } = calculateUDim2(node, parentNode);
 
   const robloxNode: any = {
-    Name: cleanName,
+    Name: node.name.replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'Element',
     ClassName: className,
-    Size,
-    Position,
-    AnchorPoint,
-    AspectRatio: isLock ? AspectRatio : undefined,
+    Size, Position, AnchorPoint,
+    Rotation: 'rotation' in node && typeof node.rotation === 'number' && Math.abs(node.rotation) > 0.001 ? Number(node.rotation.toFixed(3)) : undefined,
     Children: []
   };
-
-  if (scrollAxis && className === 'ScrollingFrame') {
-    robloxNode.ScrollAxis = scrollAxis;
-  }
 
   let solidFill: SolidPaint | undefined;
   let gradientFills: GradientPaint[] = [];
@@ -151,43 +83,49 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
   if ('fills' in node && Array.isArray(node.fills)) {
     const visibleFills = node.fills.filter((f: Paint) => f.visible !== false);
     solidFill = visibleFills.find((f: Paint) => f.type === 'SOLID') as SolidPaint | undefined;
-    gradientFills = visibleFills.filter((f: Paint) => f.type === 'GRADIENT_LINEAR' || f.type === 'GRADIENT_RADIAL') as GradientPaint[];
+    gradientFills = visibleFills.filter((f: Paint) => f.type === 'GRADIENT_LINEAR' || f.type === 'GRADIENT_RADIAL' || f.type === 'GRADIENT_ANGULAR') as GradientPaint[];
   }
 
   if (gradientFills.length > 0) {
-    robloxNode.Gradient = parseGradient(gradientFills[0]);
+    robloxNode.Gradient = parseGradient(gradientFills[0], nodeBox.width, nodeBox.height);
     robloxNode.BackgroundColor3 = { R: 255, G: 255, B: 255, A: 1 };
     robloxNode.BackgroundTransparency = 0;
   } else if (solidFill && !isImageNode) {
     const color = figmaColorToRoblox(solidFill);
     robloxNode.BackgroundColor3 = color;
     robloxNode.BackgroundTransparency = 1 - color.A;
-  } else if (!isImageNode) {
+  } else if (isImageNode) {
+    // FIX: Force ImageLabels to be fully transparent so they don't block the UI behind them
+    robloxNode.BackgroundTransparency = 1;
+  } else {
     robloxNode.BackgroundTransparency = 1;
   }
 
   if (node.type === 'TEXT' && !isImageNode) {
     robloxNode.Text = node.characters;
-    robloxNode.TextSize = (typeof node.fontSize === 'number') ? node.fontSize : 14;
+    robloxNode.TextSize = typeof node.fontSize === 'number' ? node.fontSize : 14;
     robloxNode.BackgroundTransparency = 1;
-    robloxNode.TextWrapped = true;
-    
+    delete robloxNode.BackgroundColor3;
+
+    if (solidFill) robloxNode.TextColor3 = figmaColorToRoblox(solidFill);
+
     if (node.fontName && typeof node.fontName !== 'symbol') {
-      robloxNode.FontFamily = node.fontName.family;
+      const rawStyle = node.fontName.style.trim().toLowerCase();
+      robloxNode.FontFamily = node.fontName.family.trim().replace(/[^a-zA-Z0-9_-]/g, '');
       robloxNode.FontStyle = node.fontName.style;
+      
+      if (rawStyle.includes('heavy') || rawStyle.includes('black')) robloxNode.FontWeight = 'Heavy';
+      else if (rawStyle.includes('extra bold')) robloxNode.FontWeight = 'ExtraBold';
+      else if (rawStyle.includes('semi bold') || rawStyle.includes('semibold')) robloxNode.FontWeight = 'SemiBold';
+      else if (rawStyle.includes('bold')) robloxNode.FontWeight = 'Bold';
+      else if (rawStyle.includes('medium')) robloxNode.FontWeight = 'Medium';
+      else if (rawStyle.includes('light')) robloxNode.FontWeight = 'Light';
+      else if (rawStyle.includes('thin')) robloxNode.FontWeight = 'Thin';
+      else robloxNode.FontWeight = 'Regular';
     }
 
-    if (solidFill) {
-      robloxNode.TextColor3 = figmaColorToRoblox(solidFill);
-    }
-
-    if (node.textAlignHorizontal === 'LEFT') robloxNode.TextXAlignment = 'Left';
-    else if (node.textAlignHorizontal === 'RIGHT') robloxNode.TextXAlignment = 'Right';
-    else robloxNode.TextXAlignment = 'Center';
-
-    if (node.textAlignVertical === 'TOP') robloxNode.TextYAlignment = 'Top';
-    else if (node.textAlignVertical === 'BOTTOM') robloxNode.TextYAlignment = 'Bottom';
-    else robloxNode.TextYAlignment = 'Center';
+    robloxNode.TextXAlignment = node.textAlignHorizontal === 'RIGHT' ? 'Right' : (node.textAlignHorizontal === 'CENTER' ? 'Center' : 'Left');
+    robloxNode.TextYAlignment = node.textAlignVertical === 'BOTTOM' ? 'Bottom' : (node.textAlignVertical === 'TOP' ? 'Top' : 'Center');
   }
 
   if ('strokes' in node && Array.isArray(node.strokes) && node.strokes.length > 0) {
@@ -201,58 +139,10 @@ export async function parseNode(node: SceneNode, parentNode: SceneNode | null): 
     robloxNode.CornerRadius = node.cornerRadius;
   }
 
-  if ('effects' in node && Array.isArray(node.effects)) {
-    const dropShadow = node.effects.find(e => e.type === 'DROP_SHADOW' && e.visible !== false) as DropShadowEffect | undefined;
-    if (dropShadow) {
-      robloxNode.Shadow = {
-        Color: { R: Math.round(dropShadow.color.r * 255), G: Math.round(dropShadow.color.g * 255), B: Math.round(dropShadow.color.b * 255), A: 1 },
-        Offset: { X: dropShadow.offset.x, Y: dropShadow.offset.y },
-        Blur: typeof dropShadow.radius === 'number' ? dropShadow.radius : 4,
-        Transparency: 1 - dropShadow.color.a
-      };
-    }
-  }
-
-  const isRootFrame = parentNode === null;
-  const hasBgOrAbs = 'children' in node && node.children.some(c => ('layoutPositioning' in c && c.layoutPositioning === 'ABSOLUTE') || /shadow|background|bg/i.test(c.name));
-
-  if (!isRootFrame && !hasBgOrAbs && 'layoutMode' in node && (node.layoutMode === 'HORIZONTAL' || node.layoutMode === 'VERTICAL')) {
-    robloxNode.ListLayout = {
-      FillDirection: node.layoutMode === 'HORIZONTAL' ? 'Horizontal' : 'Vertical',
-      Padding: typeof node.itemSpacing === 'number' ? node.itemSpacing : 0,
-      SortOrder: 'LayoutOrder'
-    };
-    
-    if ('paddingTop' in node && typeof node.paddingTop === 'number' && (node.paddingTop > 0 || node.paddingBottom > 0 || node.paddingLeft > 0 || node.paddingRight > 0)) {
-      robloxNode.Padding = {
-        Top: typeof node.paddingTop === 'number' ? node.paddingTop : 0,
-        Bottom: typeof node.paddingBottom === 'number' ? node.paddingBottom : 0,
-        Left: typeof node.paddingLeft === 'number' ? node.paddingLeft : 0,
-        Right: typeof node.paddingRight === 'number' ? node.paddingRight : 0
-      };
-    }
-  }
-
-  if (isImageNode) {
-    try {
-      const bytes = await node.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 2 } });
-      robloxNode.ImageBase64 = figma.base64Encode(bytes);
-      robloxNode.BackgroundTransparency = 1;
-      
-      if (isGray && solidFill) {
-        robloxNode.ImageColor3 = figmaColorToRoblox(solidFill);
-      }
-    } catch (e) {
-      console.error(`Failed to export image: ${node.name}`, e);
-    }
-  }
-
   if ('children' in node && !isImageNode) {
     for (const child of node.children) {
       const childNode = await parseNode(child, node);
-      if (childNode) {
-        robloxNode.Children.push(childNode);
-      }
+      if (childNode) robloxNode.Children.push(childNode);
     }
   }
 
