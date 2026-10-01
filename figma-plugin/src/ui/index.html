@@ -10,7 +10,7 @@
   <div class="flex flex-col h-full">
     <div class="mb-6">
       <h1 class="text-xl font-bold text-figma-blue">⚡ SwiftBlox UI</h1>
-      <p class="text-sm text-figma-textMuted mt-1">Select a root frame and choose an export bridge to Roblox Studio.</p>
+      <p class="text-sm text-figma-textMuted mt-1">Export a Figma frame, or turn supported HTML + CSS into native Roblox UI data.</p>
     </div>
 
     <div class="flex-1 space-y-3">
@@ -28,12 +28,22 @@
         <span class="font-semibold">Option C: Open Cloud</span>
         <span class="text-xs text-figma-textMuted mt-1">Requires API Key configuration. (Coming Soon)</span>
       </button>
+
+      <div class="border-t border-figma-border pt-4 mt-4">
+        <p class="font-semibold text-sm">HTML + CSS → Roblox JSON</p>
+        <p class="text-xs text-figma-textMuted mt-1">Paste a self-contained layout. It is converted directly to SwiftBlox JSON; no Figma layers are created.</p>
+        <textarea id="html-input" class="w-full mt-3 p-2 rounded-md bg-figma-panel border border-figma-border text-xs font-mono resize-y" rows="7" placeholder="<div style=&quot;width: 400px; padding: 24px; background: #1f2937; border-radius: 12px&quot;>Hello Roblox</div>"></textarea>
+        <button id="btn-html" class="w-full mt-2 bg-figma-blue text-white p-3 rounded-md font-semibold">Copy Roblox JSON</button>
+      </div>
     </div>
 
     <div id="status-container" class="mt-4 p-3 rounded-md bg-figma-panel border border-figma-border hidden">
       <p id="status-text" class="text-sm text-center font-medium"></p>
     </div>
   </div>
+
+  <!-- The browser engine measures supported CSS before it is serialized to Roblox GUI data. -->
+  <div id="html-render-area" aria-hidden="true"></div>
 
   <script type="module" src="./main.ts"></script>
 </body>

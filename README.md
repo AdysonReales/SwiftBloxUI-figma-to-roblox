@@ -323,6 +323,33 @@ npm run dev
 
 ---
 
+## Option C — HTML + CSS Workflow
+
+Use this for a self-contained HTML layout when you want to skip creating intermediary Figma layers. The Figma plugin measures the browser layout, keeps the element hierarchy, and copies a SwiftBlox JSON payload that the Studio companion creates as native Roblox instances.
+
+```text
+HTML + supported CSS
+  ↓
+SwiftBlox HTML converter
+  ↓
+Structured SwiftBlox JSON
+  ↓
+Roblox Studio Companion Plugin
+  ↓
+Native ScreenGui
+```
+
+### Steps
+
+1. Open the SwiftBlox UI Figma plugin.
+2. Paste HTML with inline CSS or a `<style>` block into **HTML + CSS → Roblox JSON**.
+3. Click **Copy Roblox JSON**.
+4. Open the SwiftBlox Studio plugin, paste the payload, and click **Construct GuiTree**.
+
+The first version supports visible nested elements, text, buttons, text inputs, colours, borders, corner radii, font size/weight, and text alignment. It warns about images, CSS gradients/background images, and shadows because those require Roblox assets or do not have a direct native equivalent.
+
+---
+
 # 🧩 Supported Roblox UI
 
 SwiftBlox UI is designed around Roblox's native GUI system.

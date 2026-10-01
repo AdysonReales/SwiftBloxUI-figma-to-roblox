@@ -1,9 +1,12 @@
 import './styles.css';
+import { convertHtmlToSwiftBlox } from './htmlToSwiftBlox';
 
 let currentBridgeMode: 'CLIPBOARD' | 'LOCALHOST' | null = null;
 
 const btnClipboard = document.getElementById('btn-clipboard') as HTMLButtonElement;
 const btnLocalhost = document.getElementById('btn-localhost') as HTMLButtonElement;
+const btnHtml = document.getElementById('btn-html') as HTMLButtonElement;
+const htmlInput = document.getElementById('html-input') as HTMLTextAreaElement;
 const statusContainer = document.getElementById('status-container') as HTMLDivElement;
 const statusText = document.getElementById('status-text') as HTMLParagraphElement;
 
@@ -21,6 +24,24 @@ function triggerExport(mode: 'CLIPBOARD' | 'LOCALHOST') {
 
 btnClipboard.addEventListener('click', () => triggerExport('CLIPBOARD'));
 btnLocalhost.addEventListener('click', () => triggerExport('LOCALHOST'));
+
+btnHtml.addEventListener('click', () => {
+  try {
+    const result = convertHtmlToSwiftBlox(htmlInput.value);
+    const textArea = document.createElement('textarea');
+    textArea.value = JSON.stringify(result.payload);
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+
+    const warning = result.warnings.length > 0 ? ` ${result.warnings.length} unsupported item(s) skipped.` : '';
+    setStatus(`✅ Roblox JSON copied.${warning} Paste it in the Studio plugin and click Construct GuiTree.`, false);
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : 'Could not convert that HTML.', true);
+  }
+});
 
 window.onmessage = async (event) => {
   const msg = event.data.pluginMessage;

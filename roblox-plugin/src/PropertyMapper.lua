@@ -61,7 +61,7 @@ function PropertyMapper.applyTextProperties(instance, nodeData)
     instance.TextSize = tonumber(nodeData.TextSize) or 14
     instance.FontFace = createFont(nodeData)
     instance.AutoLocalize = false
-    instance.TextWrapped = true
+    instance.TextWrapped = nodeData.TextWrapped ~= false
     instance.TextScaled = false -- Forces exact Figma font sizing
 
     -- GUARANTEE TEXT BACKGROUNDS ARE INVISIBLE
@@ -78,6 +78,25 @@ function PropertyMapper.applyTextProperties(instance, nodeData)
     
     instance.TextXAlignment = alignX[nodeData.TextXAlignment] or Enum.TextXAlignment.Center
     instance.TextYAlignment = alignY[nodeData.TextYAlignment] or Enum.TextYAlignment.Center
+end
+
+function PropertyMapper.applyLayout(instance, nodeData)
+    if nodeData.Padding then
+        local padding = Instance.new("UIPadding")
+        padding.PaddingTop = UDim.new(0, tonumber(nodeData.Padding.Top) or 0)
+        padding.PaddingBottom = UDim.new(0, tonumber(nodeData.Padding.Bottom) or 0)
+        padding.PaddingLeft = UDim.new(0, tonumber(nodeData.Padding.Left) or 0)
+        padding.PaddingRight = UDim.new(0, tonumber(nodeData.Padding.Right) or 0)
+        padding.Parent = instance
+    end
+
+    if nodeData.ListLayout then
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection[nodeData.ListLayout.FillDirection] or Enum.FillDirection.Vertical
+        layout.Padding = UDim.new(0, tonumber(nodeData.ListLayout.Padding) or 0)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = instance
+    end
 end
 
 function PropertyMapper.applyDecorations(instance, nodeData)

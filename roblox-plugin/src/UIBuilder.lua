@@ -32,6 +32,10 @@ local function buildNodeRecursive(nodeData, parent, depth)
         PropertyMapper.applyDecorations(instance, nodeData)
     end
 
+    if hasMapper and PropertyMapper and PropertyMapper.applyLayout then
+        PropertyMapper.applyLayout(instance, nodeData)
+    end
+
     if nodeData.Children and type(nodeData.Children) == "table" then
         for _, childData in ipairs(nodeData.Children) do
             buildNodeRecursive(childData, instance, depth + 1)

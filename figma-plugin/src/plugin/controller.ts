@@ -4,7 +4,7 @@ import { parseNode } from './parser';
 
 declare const __html__: string;
 
-figma.showUI(__html__, { width: 340, height: 420, themeColors: true });
+figma.showUI(__html__, { width: 420, height: 620, themeColors: true });
 
 figma.ui.onmessage = async (msg: { type: string; [key: string]: any }) => {
   if (msg.type === 'EXPORT_UI') {

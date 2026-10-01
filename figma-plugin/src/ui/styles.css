@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 /* Base Figma UI overrides */
+#html-render-area {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1920px;
+  min-height: 1080px;
+  visibility: hidden;
+  pointer-events: none;
+}
 body {
   margin: 0;
   overflow: hidden;
